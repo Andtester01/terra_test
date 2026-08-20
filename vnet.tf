@@ -31,13 +31,27 @@ resource "azurerm_network_security_group" "nsg_lab" {
         protocol     = "Tcp"
         source_port_range      = "*"
         destination_port_range = "22"  
-        source_address_prefix  = "187.22.146.44/32"
+        source_address_prefix  = "187.255.40.219/32"
         destination_address_prefix = "*"
-    
+
+    }
+        
+        security_rule {
+            name = "Allow_http"
+            priority = 110
+            direction = "Inbound"
+            access = "Allow"
+            protocol = "Tcp"
+            source_port_range = "*"
+            destination_port_range = "80"
+            source_address_prefix = "*"
+            destination_address_prefix = "*"
+
 
           }
 
 }
+
 resource "azurerm_subnet_network_security_group_association" "subnet_nsg_assoc" {
     subnet_id = azurerm_subnet.subnet_lab.id
     network_security_group_id = azurerm_network_security_group.nsg_lab.id
