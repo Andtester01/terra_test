@@ -51,22 +51,47 @@ resource "azurerm_network_security_group" "nsg_lab" {
           }
 
 }
-
-resource "azurerm_subnet_network_security_group_association" "subnet_nsg_assoc" {
-    subnet_id = azurerm_subnet.subnet_lab.id
-    network_security_group_id = azurerm_network_security_group.nsg_lab.id
-
-}
-resource "azurerm_network_interface" "nic_lab" {
-    name = "nic_lab" 
-    location = data.azurerm_resource_group.test_rg.location 
+resource "azurerm_network_security_group" "nsg_vpn" {
+    name = "nsg_vpn"
+    location = data.azurerm_resource_group.test_rg.location
     resource_group_name = data.azurerm_resource_group.test_rg.name
-    ip_configuration {
-        name = "ipconfig1"
-        subnet_id = azurerm_subnet.subnet_lab.id
-        private_ip_address_allocation = "Dynamic"
-        public_ip_address_id = azurerm_public_ip.pub-ip.id
-    }
+
+
+       security_rule {
+    
+       name = "Allow_ssh"
+       priority = 100
+       direction = "Inbound"
+       access = "Allow"
+       protocol = "Tcp"
+       source_port_range = "*"
+       destination_port_range = "22"
+       source_address_prefix = "*"
+       destination_address_prefix = "*"
+
+       }  
+          
+      security_rule {
+        
+        name = "Allow_http"
+            priority = 110
+            direction = "Inbound"
+            access = "Allow"
+            protocol = "Udp"
+            source_port_range = "*"
+            destination_port_range = "51820"
+            source_address_prefix = "*"
+            destination_address_prefix = "*"
+      } 
+}   
+      resource "azurerm_network_interface_security_group_association" "nsg_assoc_lab" {
+          network_interface_id = azurerm_network_interface.nic_lab.id
+            network_security_group_id = azurerm_network_security_group.nsg_lab.id    
+     }
+
+resource "azurerm_network_interface_security_group_association" "nsg_assoc_vpn" {
+    network_interface_id = azurerm_network_interface.nic_vpn.id
+    network_security_group_id = azurerm_network_security_group.nsg_vpn.id
 }
 
 resource "azurerm_public_ip" "pub-ip" {
@@ -77,6 +102,19 @@ resource "azurerm_public_ip" "pub-ip" {
 
 }
 
+resource "azurerm_network_interface" "nic_lab" {
+    name = "nic_lab" 
+    location = data.azurerm_resource_group.test_rg.location 
+    resource_group_name = data.azurerm_resource_group.test_rg.name
+    ip_configuration {
+        name = "ipconfig1"
+        subnet_id = azurerm_subnet.subnet_lab.id
+        private_ip_address_allocation = "Dynamic"
+        public_ip_address_id = azurerm_public_ip.pub-ip.id
+    }
+
+}    
+
 resource "azurerm_linux_virtual_machine" "vmlab" {
     name = "vmlab"
     resource_group_name = data.azurerm_resource_group.test_rg.name 
@@ -86,10 +124,8 @@ resource "azurerm_linux_virtual_machine" "vmlab" {
     network_interface_ids = [azurerm_network_interface.nic_lab.id]
     admin_ssh_key {
         username = "azureuser"
-        public_key = file("~/.ssh/azure_vm_key.pub") 
+        public_key = file("/Users/andymarinho/.ssh/azure_vm_key.pub") 
  }
-
-
         os_disk {
             caching       = "ReadWrite"
             storage_account_type = "Standard_LRS" 
@@ -101,3 +137,56 @@ resource "azurerm_linux_virtual_machine" "vmlab" {
                 version = "latest"
             }
 }
+
+resource "azurerm_public_ip" "pub-ip_vpn" {
+    name = "pub-ip-vpn"
+    location = data.azurerm_resource_group.test_rg.location
+    resource_group_name = data.azurerm_resource_group.test_rg.name
+    allocation_method = "Static"
+
+}
+
+resource "azurerm_network_interface" "nic_vpn" {
+    name = "nic_vpn"
+    location = data.azurerm_resource_group.test_rg.location
+    resource_group_name = data.azurerm_resource_group.test_rg.name
+    ip_configuration {
+        name = "ipconfig1"
+        subnet_id = azurerm_subnet.subnet_lab.id
+        private_ip_address_allocation = "Dynamic"
+        public_ip_address_id = azurerm_public_ip.pub-ip_vpn.id
+    } 
+          
+
+}
+resource "azurerm_linux_virtual_machine" "vpnlab" {
+    name = "vpnlab"
+    resource_group_name = data.azurerm_resource_group.test_rg.name
+    location = data.azurerm_resource_group.test_rg.location
+    size = "Standard_B1s"
+    admin_username = "azureuser2"
+    network_interface_ids = [azurerm_network_interface.nic_vpn.id]
+    
+    admin_ssh_key {
+        username = "azureuser2"
+         public_key = file("/Users/andymarinho/.ssh/azure_vpn_key.pub")
+    }
+         os_disk {
+            caching = "ReadWrite"
+            storage_account_type = "Standard_LRS" 
+
+}           
+
+source_image_reference {
+    publisher = "Canonical"
+    offer = "0001-com-ubuntu-server-jammy"
+    sku = "22_04-lts"
+    version = "latest"
+
+}
+  
+
+}
+
+
+
