@@ -1,0 +1,7 @@
+open ssh 
+
+azureuser2
+
+~/.ssh/azure_vpn_key 
+  
+20.115.117.15
